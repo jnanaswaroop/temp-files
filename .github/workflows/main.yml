@@ -1,0 +1,34 @@
+name: Deploy to Bastion
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4  # Checkout the repo in the GitHub Actions runner
+
+      - name: SSH into EC2 Bastion and deploy
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          BASTION_HOST: ${{ secrets.BASTION_HOST }}
+          BASTION_USER: ${{ secrets.BASTION_USER }}
+        run: |
+          # Setup SSH Key
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Add Bastion host to known hosts to avoid prompt
+          ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
+
+          # SSH into Bastion and checkout repository
+          ssh "$BASTION_USER@$BASTION_HOST" << 'EOF'
+            cd ~
+            git clone https://github.com/jnanaswaroop/temp-files.git || (cd temp-files && git pull)
+          EOF
